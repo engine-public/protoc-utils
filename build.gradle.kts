@@ -156,7 +156,7 @@ protobuf {
                 .project(projects.protocUtilsRecorder.path)
                 .layout
                 .buildDirectory
-                .map { it.dir("native/nativeCompile").file("${projects.protocUtilsRecorder.name}-${osdetector.arch}") }
+                .map { it.dir("native/nativeCompile").file("${projects.protocUtilsRecorder.name}-${osdetector.os}-${osdetector.arch}") }
                 .get()
                 .asFile
                 .absolutePath
