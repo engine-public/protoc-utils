@@ -4,8 +4,6 @@ import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 
 plugins {
-    application
-    idea
     alias(libs.plugins.graalvm.native).apply(false)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktlint)
@@ -119,10 +117,6 @@ description = "Utilities to assist in the building of a protoc plugin."
 dependencies {
     api(libs.protobuf.java)
     testImplementation(libs.protobuf.java)
-}
-
-application {
-    mainClass.set("com.engine.protoc.openapi.MainKt")
 }
 
 val processTestResources = tasks.named("processTestResources", ProcessResources::class) {
