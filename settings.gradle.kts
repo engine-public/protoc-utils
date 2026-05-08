@@ -13,7 +13,7 @@ rootDir
             !dir.name.startsWith(".") &&
                 dir.name !in setOf("build", "buildSrc", "tmp", "scratch") &&
                 !dir.resolve(".gradle_ignore").exists()
-        )
+            )
     }
     .filter { it != rootDir && it.isDirectory }
     .filter { it.resolve("build.gradle.kts").run { exists() && isFile } }
