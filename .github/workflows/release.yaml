@@ -60,13 +60,6 @@ jobs:
           path: build/dist
           pattern: dist-*
 
-      - name: Download Maven Staging Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: build/staging/maven-central
-          pattern: staging-*
-          merge-multiple: true
-
       - name: List Artifacts Directory
         run: |
           ls -alhR build/
@@ -78,19 +71,6 @@ jobs:
         run: |
           git tag --annotate "${{ inputs.build_version }}" --message="${{ inputs.build_version }}"
           git push origin "${{ inputs.build_version }}"
-
-      - name: Gradle Publish
-        env:
-          ENGINE_BUILD_VERSION: ${{ inputs.build_version }}
-          JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
-          JRELEASER_GPG_PUBLIC_KEY: ${{ vars.JRELEASER_GPG_PUBLIC_KEY }}
-          JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
-          JRELEASER_MAVENCENTRAL_STAGE: upload # todo make this dynamic?
-          JRELEASER_MAVENCENTRAL_TOKEN: ${{ secrets.JRELEASER_MAVENCENTRAL_TOKEN }}
-          JRELEASER_MAVENCENTRAL_USERNAME: ${{ vars.JRELEASER_MAVENCENTRAL_USERNAME }}
-        if: success()
-        run: |
-          ./gradlew -xstageMavenCentral jreleaserDeploy
 
       - name: GitHub Release
         if: success()
