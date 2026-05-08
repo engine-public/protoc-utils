@@ -16,7 +16,7 @@ graalvmNative {
     toolchainDetection = false
     binaries {
         named("main") {
-            imageName = "${project.name}-${osdetector.arch}"
+            imageName = "${project.name}-${osdetector.os}-${osdetector.arch}"
             mainClass = application.mainClass
             sharedLibrary = false
             resources.autodetect()

@@ -1,0 +1,76 @@
+---
+name: Native Build
+on:
+  workflow_call:
+    inputs:
+      build_version:
+        description: "The version to build.  It must be semver-compliant, and must not be for a tag that already exists."
+        required: false
+        type: string
+  workflow_dispatch:
+    inputs:
+      build_version:
+        description: "Optional version string to embed in the build (defaults to 0.0.0-pre.0)."
+        required: false
+        type: string
+
+jobs:
+  native-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runs-on: ubuntu-latest
+            binary-suffix: ""
+          - platform: linux-aarch64
+            runs-on: ubuntu-24.04-arm
+            binary-suffix: ""
+          - platform: macos-aarch64
+            runs-on: macos-latest
+            binary-suffix: ""
+          - platform: windows-x86_64
+            runs-on: windows-latest
+            binary-suffix: ".exe"
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: 'true'
+          fetch-depth: 0
+
+      - name: Setup GraalVM
+        uses: graalvm/setup-graalvm@f744c72a42b1995d7b0cbc314bde4bace7ac1fe1
+        with:
+          java-version: '21'
+          distribution: 'graalvm-community'
+          native-image-job-reports: 'true'
+
+      - name: Setup gradle
+        uses: gradle/actions/setup-gradle@06832c7b30a0129d7fb559bcc6e43d26f6374244
+
+      - name: Native Compile
+        env:
+          ENGINE_BUILD_VERSION: ${{ inputs.build_version }}
+        run: |
+          ./gradlew :protoc-utils-recorder:nativeCompile
+
+      - name: Stage Binary
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          BINARY_SUFFIX: ${{ matrix.binary-suffix }}
+        run: |
+          set -euo pipefail
+          mkdir -p staging
+          src=$(ls recorder/build/native/nativeCompile/protoc-utils-recorder-*"${BINARY_SUFFIX}")
+          cp "$src" "staging/protoc-utils-recorder-${PLATFORM}${BINARY_SUFFIX}"
+          ls -al staging
+
+      - name: Upload Native Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-native-${{ matrix.platform }}
+          path: staging/*
+          if-no-files-found: error

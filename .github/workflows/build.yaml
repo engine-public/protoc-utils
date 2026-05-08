@@ -38,10 +38,20 @@ jobs:
         id: getversion
         run: |
           test -f build/version.txt
-          echo "version=$(cat build/version.txt)" >> $GITHUB_OUTPUT
+          echo "version=$(cat build/version.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Build
         env:
           ENGINE_BUILD_VERSION: ${{ steps.getversion.outputs.version }}
         run: |
           ./gradlew build
+
+      - name: Upload JVM Artifacts
+        if: inputs.build_version != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-jvm-jars
+          path: |
+            build/libs/*.jar
+            recorder/build/libs/*.jar
+          if-no-files-found: error
