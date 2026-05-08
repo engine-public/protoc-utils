@@ -23,16 +23,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: linux-x86_64
+          - classifier: linux-x86_64
             runs-on: ubuntu-latest
             binary-suffix: ""
-          - platform: linux-aarch64
+          - classifier: linux-aarch_64
             runs-on: ubuntu-24.04-arm
             binary-suffix: ""
-          - platform: macos-aarch64
+          - classifier: osx-aarch_64
             runs-on: macos-latest
             binary-suffix: ""
-          - platform: windows-x86_64
+          - classifier: windows-x86_64
             runs-on: windows-latest
             binary-suffix: ".exe"
     runs-on: ${{ matrix.runs-on }}
@@ -53,27 +53,43 @@ jobs:
       - name: Setup gradle
         uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # https://github.com/gradle/actions/releases/tag/v6.1.0
 
-      - name: Native Compile
+      - name: Determine Build Version
         env:
           ENGINE_BUILD_VERSION: ${{ inputs.build_version }}
+        run: |
+          ./gradlew writeVersion
+
+      - name: Read Version File
+        id: getversion
+        shell: bash
+        run: |
+          test -f build/version.txt
+          echo "version=$(cat build/version.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Native Compile
+        env:
+          ENGINE_BUILD_VERSION: ${{ steps.getversion.outputs.version }}
         run: |
           ./gradlew :protoc-utils-recorder:nativeCompile
 
       - name: Stage Binary
         shell: bash
         env:
-          PLATFORM: ${{ matrix.platform }}
+          CLASSIFIER: ${{ matrix.classifier }}
           BINARY_SUFFIX: ${{ matrix.binary-suffix }}
+          VERSION: ${{ steps.getversion.outputs.version }}
         run: |
           set -euo pipefail
           mkdir -p staging
-          src=$(ls recorder/build/native/nativeCompile/protoc-utils-recorder-*"${BINARY_SUFFIX}")
-          cp "$src" "staging/protoc-utils-recorder-${PLATFORM}${BINARY_SUFFIX}"
+          src="recorder/build/native/nativeCompile/protoc-utils-recorder-${CLASSIFIER}${BINARY_SUFFIX}"
+          test -f "$src" || { echo "expected native binary not found at $src"; ls -al recorder/build/native/nativeCompile; exit 1; }
+          dst="staging/protoc-utils-recorder-${VERSION}-${CLASSIFIER}${BINARY_SUFFIX}"
+          cp "$src" "$dst"
           ls -al staging
 
       - name: Upload Native Binary
         uses: actions/upload-artifact@v4
         with:
-          name: dist-native-${{ matrix.platform }}
+          name: dist-native-${{ matrix.classifier }}
           path: staging/*
           if-no-files-found: error

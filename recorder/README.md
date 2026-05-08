@@ -6,22 +6,54 @@ The primary use case is generating a stable binary fixture for unit-testing a pr
 
 ---
 
+## Maven Central
+
+The recorder is published to Maven Central as a POM-only artifact with a per-platform native binary attached as a classified file. Coordinates:
+
+| Group | Artifact | Classifier | Extension |
+|---|---|---|---|
+| `com.engine` | `protoc-utils-recorder` | `linux-x86_64` | _(none)_ |
+| `com.engine` | `protoc-utils-recorder` | `linux-aarch_64` | _(none)_ |
+| `com.engine` | `protoc-utils-recorder` | `osx-aarch_64` | _(none)_ |
+| `com.engine` | `protoc-utils-recorder` | `windows-x86_64` | `exe` |
+
+The classifier values match the `com.google.osdetector` Gradle plugin's `osdetector.classifier` exactly, so you can resolve the right binary for the build host with:
+
+```kotlin
+plugins {
+    id("com.google.osdetector")
+}
+
+val recorderVersion = "<version>"
+
+val recorder: Configuration by configurations.creating
+
+dependencies {
+    val ext = if (osdetector.os == "windows") "@exe" else ""
+    recorder("com.engine:protoc-utils-recorder:$recorderVersion:${osdetector.classifier}$ext")
+}
+```
+
+> **Note**: unlike `io.grpc:protoc-gen-grpc-java`, the Linux and macOS artifacts have no extension (the binary is a plain ELF / Mach-O file). Only `windows-x86_64` uses the `.exe` extension.
+
+---
+
 ## Usage
 
 ### Command line
 
-Build the native binary first (requires GraalVM 21):
+Either download the binary for your platform from Maven Central (see classifiers above) or build it locally with GraalVM 21:
 
 ```bash
 ./gradlew :protoc-utils-recorder:nativeCompile
-# binary is written to protoc-utils/recorder/build/native/nativeCompile/
+# binary is written to recorder/build/native/nativeCompile/protoc-utils-recorder-<os>-<arch>
 ```
 
 Then invoke it as a normal protoc plugin. The `--recorder_out` argument controls the directory where `code-generator-request.binpb` is written.
 
 ```bash
 protoc \
-  --plugin=protoc-gen-recorder=./protoc-utils-recorder-aarch_64 \
+  --plugin=protoc-gen-recorder=./protoc-utils-recorder-osx-aarch_64 \
   --recorder_out=./out \
   --proto_path=src/main/proto \
   src/main/proto/my/package/my_service.proto
@@ -31,9 +63,9 @@ protoc \
 
 ---
 
-### Gradle protobuf plugin
+### Gradle protobuf plugin (binary from Maven Central)
 
-Add the recorder as a plugin path inside the `protobuf` block, then wire it into `processTestResources` so the `.binpb` is available on the test classpath:
+Resolve the platform-specific binary via a custom configuration, then point the `protobuf` block's plugin `path` at the resolved file. This keeps the build hermetic — no separate `nativeCompile` step required.
 
 ```kotlin
 // build.gradle.kts
@@ -42,23 +74,33 @@ plugins {
     id("com.google.osdetector")
 }
 
+val recorder: Configuration by configurations.creating { isTransitive = false }
+
+dependencies {
+    val ext = if (osdetector.os == "windows") "@exe" else ""
+    recorder("com.engine:protoc-utils-recorder:<version>:${osdetector.classifier}$ext")
+}
+
+val recorderBinary = tasks.register<Sync>("syncRecorderBinary") {
+    from(recorder)
+    into(layout.buildDirectory.dir("recorder"))
+    eachFile { permissions { unix("0755") } }
+}
+
 protobuf {
     protoc {
         artifact = "com.google.protobuf:protoc:4.31.1"
     }
     plugins {
         create("recorder") {
-            // point at the compiled native binary; osdetector provides the arch suffix
-            path = project(":protoc-utils-recorder")
-                .layout.buildDirectory
-                .map { it.dir("native/nativeCompile").file("protoc-utils-recorder-${osdetector.arch}") }
-                .get().asFile.absolutePath
+            path = recorderBinary
+                .map { it.destinationDir.listFiles()!!.first().absolutePath }
+                .get()
         }
     }
     generateProtoTasks {
         all().all {
-            dependsOn(":protoc-utils-recorder:nativeCompile")
-            // make sure the .binpb lands in processTestResources before tests run
+            dependsOn(recorderBinary)
             tasks.findByPath(":my-project:processTestResources")!!.dependsOn(this)
             plugins {
                 create("recorder")
@@ -67,13 +109,38 @@ protobuf {
     }
 }
 
-// copy the recorder output into the test resources directory
 tasks.named("processTestResources", ProcessResources::class) {
     from(
         layout.buildDirectory
             .dir("generated/source/proto/test/recorder")
             .map { it.file("code-generator-request.binpb") }
     )
+}
+```
+
+### Gradle protobuf plugin (binary built locally)
+
+If you'd rather build the native binary in-tree from a Gradle subproject (e.g. when developing this repo), point at the `nativeCompile` output directly:
+
+```kotlin
+protobuf {
+    plugins {
+        create("recorder") {
+            path = project(":protoc-utils-recorder")
+                .layout.buildDirectory
+                .map { it.dir("native/nativeCompile").file("protoc-utils-recorder-${osdetector.os}-${osdetector.arch}") }
+                .get().asFile.absolutePath
+        }
+    }
+    generateProtoTasks {
+        all().all {
+            dependsOn(":protoc-utils-recorder:nativeCompile")
+            tasks.findByPath(":my-project:processTestResources")!!.dependsOn(this)
+            plugins {
+                create("recorder")
+            }
+        }
+    }
 }
 ```
 

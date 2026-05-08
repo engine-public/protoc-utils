@@ -54,7 +54,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dist-jvm-jars
+          # only the protoc-utils library jars are published; the recorder
+          # subproject ships only as native binaries (see release.yaml).
           path: |
             build/libs/*.jar
-            recorder/build/libs/*.jar
           if-no-files-found: error
