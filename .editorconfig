@@ -19,5 +19,5 @@ ktlint_standard_filename = disabled
 ktlint_standard_no-wildcard-imports = disabled
 ktlint_standard_max-line-length = disabled
 
-[*.yml]
+[*.{yml,yaml}]
 indent_size = 2
