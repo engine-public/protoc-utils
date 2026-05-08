@@ -112,23 +112,6 @@ allprojects {
             jvmArgs("--add-opens=java.base/java.util=ALL-UNNAMED")
         }
     }
-
-    configure<KtlintExtension> {
-        version.set("1.8.0")
-        filter {
-            /*
-             * work around bug in the ktlint plugin that doesn't honor exclusions of
-             * generated code (protobuf, etc.)
-             */
-            exclude {
-                it.file.absolutePath.startsWith(layout.buildDirectory.get().asFile.absolutePath)
-            }
-        }
-        reporters {
-            reporter(ReporterType.CHECKSTYLE)
-            reporter(ReporterType.HTML)
-        }
-    }
 }
 
 description = "Utilities to assist in the building of a protoc plugin."
@@ -179,7 +162,9 @@ val writeVersion = tasks.register("writeVersion") {
     val versionFile = project.layout.buildDirectory.map { it.file("version.txt") }
     group = "build"
     outputs.file(versionFile)
-    outputs.upToDateWhen { !versionFile.get().asFile.exists() || versionFile.get().asFile.readText() != version.toString() }
+    outputs.upToDateWhen {
+        versionFile.get().asFile.exists() && versionFile.get().asFile.readText() == version.toString()
+    }
     doFirst {
         versionFile
             .get()
