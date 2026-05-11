@@ -17,7 +17,11 @@ graalvmNative {
     toolchainDetection = false
     binaries {
         named("main") {
-            imageName = "${project.name}-${osdetector.os}-${osdetector.arch}.exe"
+            // GraalVM auto-appends .exe on Windows; everywhere else we add it
+            // explicitly so every published native artifact ends in .exe (the
+            // io.grpc:protoc-gen-grpc-java convention).
+            val exeSuffix = if (osdetector.os == "windows") "" else ".exe"
+            imageName = "${project.name}-${osdetector.os}-${osdetector.arch}$exeSuffix"
             mainClass = application.mainClass
             sharedLibrary = false
             resources.autodetect()

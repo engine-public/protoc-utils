@@ -92,8 +92,6 @@ allprojects {
     }
 
     configure<JavaPluginExtension> {
-        withJavadocJar()
-        withSourcesJar()
         toolchain {
             languageVersion.set(JavaLanguageVersion.of("21"))
             vendor.set(JvmVendorSpec.GRAAL_VM)
@@ -178,6 +176,13 @@ allprojects {
 
 description = "Utilities to assist in the building of a protoc plugin."
 
+// Only the library jar (this root project) ships sources + javadoc on Maven
+// Central; the recorder is a POM-only native-binary distribution.
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 dependencies {
     api(libs.protobuf.java)
     testImplementation(libs.protobuf.java)
@@ -229,9 +234,19 @@ val processTestResources = tasks.named("processTestResources", ProcessResources:
 }
 
 repositories {
-    // this allows us to install the binary from the recorder build and use it directly instead of loading from file path.
-    // it guarantees that at least for the os and arch this build is running, the pom is built correctly and the artifact names match expectations.
-    mavenLocal()
+    /*
+     * The recorder native binary is consumed from Maven coordinates so the
+     * published artifact name and POM are exercised by the test build itself.
+     * Scoping mavenLocal to just the recorder module keeps every other
+     * dependency (protobuf-java, kotlin-stdlib, …) resolving from
+     * mavenCentral and avoids any local ~/.m2 staleness leaking into the
+     * build.
+     */
+    mavenLocal {
+        content {
+            includeModule(group.toString(), projects.protocUtilsRecorder.name)
+        }
+    }
 }
 
 protobuf {
