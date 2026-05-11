@@ -6,6 +6,29 @@ import org.jreleaser.gradle.plugin.JReleaserExtension
 import org.jreleaser.model.Active
 import java.util.Calendar
 
+buildscript {
+    configurations.classpath {
+        resolutionStrategy.eachDependency {
+            /*
+             * https://github.com/hotelengine/protoc-utils/security/dependabot/2
+             * GHSA-f58c-gq56-vjjf — Apache Tika XXE. Transitive of JReleaser.
+             */
+            if (requested.group == "org.apache.tika" && requested.name == "tika-core") {
+                useVersion("3.2.2")
+                because("Dependabot alert #2: Apache Tika XXE (GHSA-f58c-gq56-vjjf)")
+            }
+            /*
+             * https://github.com/hotelengine/protoc-utils/security/dependabot/4
+             * GHSA-6fmv-xxpf-w3cw — plexus-utils path traversal. Transitive of JReleaser.
+             */
+            if (requested.group == "org.codehaus.plexus" && requested.name == "plexus-utils") {
+                useVersion("3.6.1")
+                because("Dependabot alert #4: plexus-utils directory traversal (GHSA-6fmv-xxpf-w3cw)")
+            }
+        }
+    }
+}
+
 plugins {
     alias(libs.plugins.graalvm.native).apply(false)
     alias(libs.plugins.jreleaser)
@@ -82,10 +105,12 @@ allprojects {
             eachDependency {
                 /*
                  * https://github.com/HotelEngine/protoc-gen-openapi/security/dependabot/3
+                 * GHSA-qqpg-mvqg-649v - Logback allows an attacker to instantiate classes already present on the class path - transitive of ktlint
                  * https://nvd.nist.gov/vuln/detail/CVE-2026-1225
                  */
                 if (requested.group == "ch.qos.logback" && requested.module.name.startsWith("logback-")) {
                     useVersion("[1.5.25,)")
+                    because("Dependabot alert 3 (from parent repo): Logback allows an attacker to instantiate classes already present on the class path")
                 }
             }
         }

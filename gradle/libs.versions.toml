@@ -8,7 +8,7 @@ google-osdetector-plugin = "1.7.3"
 graalvm-native-plugin = "0.11.0"
 google-protobuf-plugin = "0.9.6"
 jlleitschuh-ktlint-plugin = "14.2.0"
-jreleaser-plugin = "1.21.0"
+jreleaser-plugin = "1.24.0"
 
 [plugins]
 graalvm-native = { id = "org.graalvm.buildtools.native", version.ref = "graalvm-native-plugin" }
