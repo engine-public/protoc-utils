@@ -228,20 +228,17 @@ val processTestResources = tasks.named("processTestResources", ProcessResources:
     from(project.layout.buildDirectory.dir("generated/sources/proto/test/recorder").map { it.file("code-generator-request.binpb") })
 }
 
+repositories {
+    mavenLocal()
+}
+
 protobuf {
     protoc {
         artifact = libs.tools.protoc.compiler.get().toString()
     }
     plugins {
         create("recorder") {
-            path = project
-                .project(projects.protocUtilsRecorder.path)
-                .layout
-                .buildDirectory
-                .map { it.dir("native/nativeCompile").file("${projects.protocUtilsRecorder.name}-${osdetector.os}-${osdetector.arch}") }
-                .get()
-                .asFile
-                .absolutePath
+            artifact = "com.engine:protoc-utils-recorder:0.0.0-pre.0"
         }
     }
     generateProtoTasks {

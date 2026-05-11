@@ -17,7 +17,7 @@ graalvmNative {
     toolchainDetection = false
     binaries {
         named("main") {
-            imageName = "${project.name}-${osdetector.os}-${osdetector.arch}"
+            imageName = "${project.name}-${osdetector.os}-${osdetector.arch}.exe"
             mainClass = application.mainClass
             sharedLibrary = false
             resources.autodetect()
@@ -40,14 +40,14 @@ description = "A protoc plugin that records the CodeGeneratorRequest sent by pro
 /*
  * Per-platform native binaries are published to Maven Central as classified
  * artifacts on a POM-only artifact (no main jar, mirroring io.grpc:protoc-gen-grpc-java).
- * Only the windows binary uses the .exe extension; linux and osx artifacts are
- * extension-less.
+ * Every binary uses the .exe extension regardless of host OS, so the artifact
+ * coordinates can be resolved with `:<classifier>@exe` on every platform.
  */
 val classifiedNativeArtifacts = listOf(
-    "linux-x86_64" to "",
-    "linux-aarch_64" to "",
-    "osx-aarch_64" to "",
-    "windows-x86_64" to "exe",
+    "linux-x86_64",
+    "linux-aarch_64",
+    "osx-aarch_64",
+    "windows-x86_64",
 )
 
 val nativeBinariesDir: Provider<File> = providers
@@ -94,21 +94,19 @@ afterEvaluate {
     }
 
     val binDir = nativeBinariesDir.get()
-    classifiedNativeArtifacts.forEach { (classifier, ext) ->
-        val suffix = if (ext.isEmpty()) "" else ".$ext"
+    classifiedNativeArtifacts.forEach { classifier ->
         // Look for either the local nativeCompile output (no version embedded
         // in the file name) or a release-staged file (version-tagged).
-        val candidates = listOf(
-            "${project.name}-$classifier$suffix",
-            "${project.name}-${project.version}-$classifier$suffix",
+        val artifactFile = listOf(
+            "${project.name}-$classifier.exe",
+            "${project.name}-${project.version}-$classifier.exe",
         )
-        val artifactFile = candidates
             .map { binDir.resolve(it) }
             .firstOrNull { it.exists() }
         if (artifactFile != null) {
             pub.artifact(artifactFile) {
                 this.classifier = classifier
-                this.extension = ext
+                this.extension = "exe"
             }
         } else {
             logger.info(

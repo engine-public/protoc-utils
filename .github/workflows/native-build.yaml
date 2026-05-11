@@ -25,16 +25,12 @@ jobs:
         include:
           - classifier: linux-x86_64
             runs-on: ubuntu-latest
-            binary-suffix: ""
           - classifier: linux-aarch_64
             runs-on: ubuntu-24.04-arm
-            binary-suffix: ""
           - classifier: osx-aarch_64
             runs-on: macos-latest
-            binary-suffix: ""
           - classifier: windows-x86_64
             runs-on: windows-latest
-            binary-suffix: ".exe"
     runs-on: ${{ matrix.runs-on }}
     steps:
       - name: Checkout
@@ -76,15 +72,13 @@ jobs:
         shell: bash
         env:
           CLASSIFIER: ${{ matrix.classifier }}
-          BINARY_SUFFIX: ${{ matrix.binary-suffix }}
           VERSION: ${{ steps.getversion.outputs.version }}
         run: |
           set -euo pipefail
           mkdir -p staging
-          src="recorder/build/native/nativeCompile/protoc-utils-recorder-${CLASSIFIER}${BINARY_SUFFIX}"
+          src="recorder/build/native/nativeCompile/protoc-utils-recorder-${CLASSIFIER}.exe"
           test -f "$src" || { echo "expected native binary not found at $src"; ls -al recorder/build/native/nativeCompile; exit 1; }
-          dst="staging/protoc-utils-recorder-${VERSION}-${CLASSIFIER}${BINARY_SUFFIX}"
-          cp "$src" "$dst"
+          cp "$src" "staging/protoc-utils-recorder-${VERSION}-${CLASSIFIER}.exe"
           ls -al staging
 
       - name: Upload Native Binary
