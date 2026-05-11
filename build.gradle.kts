@@ -229,6 +229,8 @@ val processTestResources = tasks.named("processTestResources", ProcessResources:
 }
 
 repositories {
+    // this allows us to install the binary from the recorder build and use it directly instead of loading from file path.
+    // it guarantees that at least for the os and arch this build is running, the pom is built correctly and the artifact names match expectations.
     mavenLocal()
 }
 
@@ -238,7 +240,7 @@ protobuf {
     }
     plugins {
         create("recorder") {
-            artifact = "com.engine:protoc-utils-recorder:0.0.0-pre.0"
+            artifact = "$group:${projects.protocUtilsRecorder.name}:${version}"
         }
     }
     generateProtoTasks {
