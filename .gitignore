@@ -1,3 +1,4 @@
+.claude/settings.local.json
 .gradle/
 .idea/
 build/

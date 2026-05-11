@@ -2,13 +2,18 @@ import org.gradle.kotlin.dsl.configure
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
+import org.jreleaser.gradle.plugin.JReleaserExtension
+import org.jreleaser.model.Active
+import java.util.Calendar
 
 plugins {
     alias(libs.plugins.graalvm.native).apply(false)
+    alias(libs.plugins.jreleaser)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.osdetector)
     alias(libs.plugins.protobuf)
+    `maven-publish`
 }
 
 fun calculateVersion(): String {
@@ -22,11 +27,48 @@ fun calculateVersion(): String {
         ?: "0.0.0-pre.0" // temporary fallback version
 }
 
+val mavenStagingDir = layout.buildDirectory.dir("staging/maven-central")
+
+configure<JReleaserExtension> {
+    project {
+        description = "Utilities to assist in the building of a protoc plugin."
+        copyright = "Copyright ${Calendar.getInstance().get(Calendar.YEAR)} HotelEngine, Inc., d/b/a Engine"
+        license = "Apache-2.0"
+    }
+    signing {
+        active.set(Active.ALWAYS)
+        armored.set(true)
+    }
+    deploy {
+        maven {
+            mavenCentral {
+                create("sonatype") {
+                    active.set(Active.ALWAYS)
+                    url.set("https://central.sonatype.com/api/v1/publisher")
+                    stagingRepository(mavenStagingDir.get().asFile.relativeTo(rootDir).path)
+                }
+            }
+        }
+    }
+}
+
+val jreleaserCreateBuildDir = tasks.register("jreleaserCreateBuildDir") {
+    group = "publishing"
+    doFirst { project.layout.buildDirectory.dir("jreleaser").get().asFile.mkdirs() }
+}
+tasks.named("jreleaserDeploy") {
+    dependsOn(jreleaserCreateBuildDir)
+}
+
+val stageMavenCentral = tasks.register("stageMavenCentral") {
+    group = "publishing"
+}
 
 allprojects {
     apply<IdeaPlugin>()
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
+    apply(plugin = "maven-publish")
 
     group = "com.engine"
     version = calculateVersion()
@@ -50,8 +92,6 @@ allprojects {
     }
 
     configure<JavaPluginExtension> {
-        withJavadocJar()
-        withSourcesJar()
         toolchain {
             languageVersion.set(JavaLanguageVersion.of("21"))
             vendor.set(JvmVendorSpec.GRAAL_VM)
@@ -109,18 +149,104 @@ allprojects {
         tasks.withType<Test>().configureEach {
             jvmArgs("--add-opens=java.base/java.util=ALL-UNNAMED")
         }
+
+        configure<PublishingExtension> {
+            repositories {
+                val mavenUser = System.getenv("MAVEN_USERNAME")
+                val mavenPassword = System.getenv("MAVEN_PASSWORD")
+                val mavenUrl = System.getenv("MAVEN_DEPLOY_URL")
+                maven {
+                    name = "stagingMaven"
+                    url = mavenUrl?.let { uri(it) } ?: mavenStagingDir.get().asFile.toURI()
+                    if (mavenUser != null) {
+                        credentials {
+                            username = mavenUser
+                            password = mavenPassword
+                        }
+                    }
+                }
+            }
+        }
+
+        tasks.findByName("publish")?.also { publishTask ->
+            stageMavenCentral.configure { dependsOn(publishTask) }
+        }
     }
 }
 
 description = "Utilities to assist in the building of a protoc plugin."
+
+// Only the library jar (this root project) ships sources + javadoc on Maven
+// Central; the recorder is a POM-only native-binary distribution.
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
 
 dependencies {
     api(libs.protobuf.java)
     testImplementation(libs.protobuf.java)
 }
 
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+            pom {
+                name.set(project.name)
+                inceptionYear.set("2025")
+                licenses {
+                    license {
+                        name.set("Apache-2.0")
+                        url.set("https://github.com/hotelengine/protoc-gen-openapi/blob/${version}/LICENSE")
+                    }
+                }
+                developers {
+                    developer {
+                        organizationUrl.set("https://github.com/hotelengine")
+                    }
+                }
+                scm {
+                    connection.set("scm:git:https://github.com/hotelengine/protoc-gen-openapi.git")
+                    developerConnection.set("scm:git:https://github.com/hotelengine/protoc-gen-openapi.git")
+                    url.set("https://github.com/hotelengine/protoc-gen-openapi")
+                }
+            }
+        }
+    }
+}
+
+afterEvaluate {
+    /*
+     * description isn't bound until subproject evaluation completes; set the
+     * pom description here so it always lands in the published metadata.
+     */
+    publishing.publications.named<MavenPublication>("maven") {
+        pom {
+            description.set(project.description)
+            url.set("https://github.com/hotelengine/protoc-gen-openapi/blob/${version}/README.md")
+        }
+    }
+}
+
 val processTestResources = tasks.named("processTestResources", ProcessResources::class) {
     from(project.layout.buildDirectory.dir("generated/sources/proto/test/recorder").map { it.file("code-generator-request.binpb") })
+}
+
+repositories {
+    /*
+     * The recorder native binary is consumed from Maven coordinates so the
+     * published artifact name and POM are exercised by the test build itself.
+     * Scoping mavenLocal to just the recorder module keeps every other
+     * dependency (protobuf-java, kotlin-stdlib, …) resolving from
+     * mavenCentral and avoids any local ~/.m2 staleness leaking into the
+     * build.
+     */
+    mavenLocal {
+        content {
+            includeModule(group.toString(), projects.protocUtilsRecorder.name)
+        }
+    }
 }
 
 protobuf {
@@ -129,20 +255,13 @@ protobuf {
     }
     plugins {
         create("recorder") {
-            path = project
-                .project(projects.protocUtilsRecorder.path)
-                .layout
-                .buildDirectory
-                .map { it.dir("native/nativeCompile").file("${projects.protocUtilsRecorder.name}-${osdetector.os}-${osdetector.arch}") }
-                .get()
-                .asFile
-                .absolutePath
+            artifact = "$group:${projects.protocUtilsRecorder.name}:${version}"
         }
     }
     generateProtoTasks {
         all().all {
             if (isTest) {
-                dependsOn(":protoc-utils-recorder:nativeCompile")
+                dependsOn(":protoc-utils-recorder:publishToMavenLocal")
                 processTestResources.configure { dependsOn(this@all) }
                 plugins {
                     create("recorder")

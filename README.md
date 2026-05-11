@@ -4,6 +4,32 @@ A Kotlin library for building `protoc` compiler plugins. It wraps the raw `Descr
 
 ---
 
+## Installation
+
+Released artifacts are published to Maven Central.
+
+**Gradle (Kotlin DSL):**
+
+```kotlin
+dependencies {
+    implementation("com.engine:protoc-utils:<version>")
+}
+```
+
+**Maven:**
+
+```xml
+<dependency>
+    <groupId>com.engine</groupId>
+    <artifactId>protoc-utils</artifactId>
+    <version>VERSION</version>
+</dependency>
+```
+
+The companion `protoc-utils-recorder` plugin is published as multi-platform native binaries under the same group; see [`recorder/README.md`](recorder/README.md) for how to consume those.
+
+---
+
 ## Why this exists
 
 When `protoc` invokes a plugin it sends a `CodeGeneratorRequest` on stdin. The request contains `FileDescriptorProto` objects that describe every `.proto` file that was compiled. The raw protobuf-java API for these types is mechanical and low-level:
@@ -45,7 +71,7 @@ The `cleaned` form is what you almost always want when generating documentation 
 
 ### Extension options
 
-Wrapper classes for `*Options` messages (`MethodOptionsWrapper`, `ServiceOptionsWrapper`, etc.) extend `AbstractExtendableMessageWrapper`, which exposes `findExtension()`. This works whether the extension was registered in the `ExtensionRegistry` at parse time or not.
+Wrapper classes for `*Options` messages (`MethodOptionsWrapper`, `ServiceOptionsWrapper`, etc.) extend `AbstractExtendableMessageWrapper`, which exposes `findExtension()`.
 
 ---
 
