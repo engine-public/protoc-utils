@@ -17,7 +17,7 @@ The recorder is published to Maven Central as a POM-only artifact with a per-pla
 | `com.engine` | `protoc-utils-recorder` | `osx-aarch_64` | `exe` |
 | `com.engine` | `protoc-utils-recorder` | `windows-x86_64` | `exe` |
 
-Every binary uses the `.exe` extension, regardless of platform, matching the convention used by `io.grpc:protoc-gen-grpc-java` and `io.github.pseudomuto:protoc-gen-doc`. The classifier values match the `com.google.osdetector` Gradle plugin's `osdetector.classifier` exactly, so the protobuf Gradle plugin can resolve the right binary for the build host directly:
+Every binary uses the `.exe` extension, regardless of platform, matching the convention used by `io.grpc:protoc-gen-grpc-java`. The classifier values match the `com.google.osdetector` Gradle plugin's `osdetector.classifier` exactly, so the protobuf Gradle plugin can resolve the right binary for the build host directly:
 
 ```kotlin
 plugins {

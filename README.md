@@ -71,7 +71,7 @@ The `cleaned` form is what you almost always want when generating documentation 
 
 ### Extension options
 
-Wrapper classes for `*Options` messages (`MethodOptionsWrapper`, `ServiceOptionsWrapper`, etc.) extend `AbstractExtendableMessageWrapper`, which exposes `findExtension()`. This works whether the extension was registered in the `ExtensionRegistry` at parse time or not.
+Wrapper classes for `*Options` messages (`MethodOptionsWrapper`, `ServiceOptionsWrapper`, etc.) extend `AbstractExtendableMessageWrapper`, which exposes `findExtension()`.
 
 ---
 
