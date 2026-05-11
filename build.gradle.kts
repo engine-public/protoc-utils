@@ -244,7 +244,7 @@ protobuf {
     generateProtoTasks {
         all().all {
             if (isTest) {
-                dependsOn(":protoc-utils-recorder:nativeCompile")
+                dependsOn(":protoc-utils-recorder:publishToMavenLocal")
                 processTestResources.configure { dependsOn(this@all) }
                 plugins {
                     create("recorder")

@@ -94,25 +94,31 @@ afterEvaluate {
     }
 
     val binDir = nativeBinariesDir.get()
+    val localClassifier = "${osdetector.os}-${osdetector.arch}"
+    val nativeCompileTask = tasks.named("nativeCompile")
+    val localBinary = layout.buildDirectory.file(
+        "native/nativeCompile/${project.name}-$localClassifier.exe",
+    )
+
     classifiedNativeArtifacts.forEach { classifier ->
-        // Look for either the local nativeCompile output (no version embedded
-        // in the file name) or a release-staged file (version-tagged).
-        val artifactFile = listOf(
-            "${project.name}-$classifier.exe",
-            "${project.name}-${project.version}-$classifier.exe",
-        )
-            .map { binDir.resolve(it) }
-            .firstOrNull { it.exists() }
-        if (artifactFile != null) {
-            pub.artifact(artifactFile) {
+        // CI release staging produces version-tagged file names; prefer that
+        // form when present so all classifiers attach to the publication.
+        val stagedFile = binDir.resolve("${project.name}-${project.version}-$classifier.exe")
+        when {
+            stagedFile.exists() -> pub.artifact(stagedFile) {
                 this.classifier = classifier
                 this.extension = "exe"
             }
-        } else {
-            logger.info(
-                "No native binary found for classifier '{}' in {}; skipping artifact.",
+            classifier == localClassifier -> pub.artifact(localBinary) {
+                this.classifier = classifier
+                this.extension = "exe"
+                // Build the binary on demand so publishToMavenLocal triggers
+                // nativeCompile automatically.
+                builtBy(nativeCompileTask)
+            }
+            else -> logger.info(
+                "No native binary for classifier '{}'; skipping artifact.",
                 classifier,
-                binDir,
             )
         }
     }
