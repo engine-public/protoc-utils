@@ -19,7 +19,6 @@ protobuf = { id = "com.google.protobuf", version.ref = "google-protobuf-plugin" 
 osdetector = { id = "com.google.osdetector", version.ref = "google-osdetector-plugin" }
 
 [libraries]
-kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf" }
 
 # test dependencies
