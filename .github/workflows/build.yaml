@@ -49,13 +49,29 @@ jobs:
         run: |
           ./gradlew build
 
+      - name: Stage JVM Distribution
+        if: inputs.build_version != ''
+        env:
+          VERSION: ${{ steps.getversion.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p staging
+          # only the protoc-utils library jars are published; the recorder
+          # subproject ships only as native binaries (see release.yaml).
+          cp build/libs/*.jar staging/
+          # CycloneDX SBOMs (one per module) ride along so they get attached
+          # to the GitHub release alongside the jars and to the Maven Central
+          # publications via the `cyclonedx`-classified artifacts.
+          cp build/reports/cyclonedx-direct/bom.json \
+            "staging/protoc-utils-${VERSION}-cyclonedx.json"
+          cp recorder/build/reports/cyclonedx-direct/bom.json \
+            "staging/protoc-utils-recorder-${VERSION}-cyclonedx.json"
+          ls -al staging
+
       - name: Upload JVM Artifacts
         if: inputs.build_version != ''
         uses: actions/upload-artifact@v4
         with:
           name: dist-jvm-jars
-          # only the protoc-utils library jars are published; the recorder
-          # subproject ships only as native binaries (see release.yaml).
-          path: |
-            build/libs/*.jar
+          path: staging/*
           if-no-files-found: error

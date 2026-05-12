@@ -1,9 +1,11 @@
+import org.cyclonedx.gradle.CyclonedxDirectTask
 import org.gradle.kotlin.dsl.configure
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 import org.jreleaser.gradle.plugin.JReleaserExtension
 import org.jreleaser.model.Active
+import org.jreleaser.sdk.tool.Cyclonedx
 import java.util.Calendar
 
 buildscript {
@@ -30,6 +32,7 @@ buildscript {
 }
 
 plugins {
+    alias(libs.plugins.cyclonedx)
     alias(libs.plugins.graalvm.native).apply(false)
     alias(libs.plugins.jreleaser)
     alias(libs.plugins.kotlin.jvm)
@@ -89,6 +92,7 @@ val stageMavenCentral = tasks.register("stageMavenCentral") {
 
 allprojects {
     apply<IdeaPlugin>()
+    apply(plugin = "org.cyclonedx.bom")
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
     apply(plugin = "maven-publish")
@@ -157,7 +161,22 @@ allprojects {
         }
     }
 
+    tasks.withType<CyclonedxDirectTask>().configureEach {
+        includeConfigs = listOf("runtimeClasspath")
+    }
+
     afterEvaluate {
+        /*
+         * Wire the direct BOM into `assemble` so `./gradlew build` produces a
+         * fresh `build/reports/cyclonedx-direct/bom.json` for every module.
+         * The maven publications below attach that file as a classified
+         * artifact (classifier=cyclonedx, extension=json), so publish tasks
+         * also trigger it transitively via `builtBy`.
+         */
+        tasks.named("assemble") {
+            dependsOn(tasks.named("cyclonedxDirectBom"))
+        }
+
         configure<TestingExtension> {
             suites {
                 configureEach {
@@ -217,6 +236,11 @@ publishing {
     publications {
         create<MavenPublication>("maven") {
             from(components["java"])
+            artifact(layout.buildDirectory.file("reports/cyclonedx-direct/bom.json")) {
+                classifier = "cyclonedx"
+                extension = "json"
+                builtBy(tasks.named("cyclonedxDirectBom"))
+            }
             pom {
                 name.set(project.name)
                 inceptionYear.set("2025")
