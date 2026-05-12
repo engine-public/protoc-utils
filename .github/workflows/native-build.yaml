@@ -39,6 +39,13 @@ jobs:
           fetch-tags: 'true'
           fetch-depth: 0
 
+      - name: "Use D: drive for tool cache (Windows)"
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p /d/hostedtoolcache/windows
+          echo "AGENT_TOOLSDIRECTORY=D:\\hostedtoolcache\\windows" >> "$GITHUB_ENV"
+
       - name: Setup GraalVM
         uses: graalvm/setup-graalvm@f744c72a42b1995d7b0cbc314bde4bace7ac1fe1
         with:
