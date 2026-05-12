@@ -65,6 +65,11 @@ publishing {
             // intentionally no `from(components["java"])` — recorder ships
             // only the classified native binaries below, and the main pom is
             // <packaging>pom</packaging>.
+            artifact(layout.buildDirectory.file("reports/cyclonedx-direct/bom.json")) {
+                classifier = "cyclonedx"
+                extension = "json"
+                builtBy(tasks.named("cyclonedxDirectBom"))
+            }
             pom {
                 name.set(project.name)
                 packaging = "pom"

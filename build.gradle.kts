@@ -1,3 +1,6 @@
+import com.github.jk1.license.LicenseReportExtension
+import com.github.jk1.license.filter.LicenseBundleNormalizer
+import org.cyclonedx.gradle.CyclonedxDirectTask
 import org.gradle.kotlin.dsl.configure
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
@@ -30,10 +33,12 @@ buildscript {
 }
 
 plugins {
+    alias(libs.plugins.cyclonedx)
     alias(libs.plugins.graalvm.native).apply(false)
     alias(libs.plugins.jreleaser)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.license.report).apply(false)
     alias(libs.plugins.osdetector)
     alias(libs.plugins.protobuf)
     `maven-publish`
@@ -87,11 +92,31 @@ val stageMavenCentral = tasks.register("stageMavenCentral") {
     group = "publishing"
 }
 
+val licenseAllowlistFile = rootProject.file("gradle/license/allowed-licenses.json")
+
 allprojects {
     apply<IdeaPlugin>()
+    apply(plugin = "com.github.jk1.dependency-license-report")
+    apply(plugin = "org.cyclonedx.bom")
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
     apply(plugin = "maven-publish")
+
+    configure<LicenseReportExtension> {
+        allowedLicensesFile = licenseAllowlistFile
+        filters = arrayOf(LicenseBundleNormalizer())
+        /*
+         * Audit only what we actually ship. Test, ktlint, and build-tool
+         * classpaths can pull in licenses we don't redistribute.
+         */
+        configurations = arrayOf("runtimeClasspath")
+    }
+
+    afterEvaluate {
+        tasks.named("check") {
+            dependsOn("checkLicense")
+        }
+    }
 
     group = "com.engine"
     version = calculateVersion()
@@ -157,7 +182,22 @@ allprojects {
         }
     }
 
+    tasks.withType<CyclonedxDirectTask>().configureEach {
+        includeConfigs = listOf("runtimeClasspath")
+    }
+
     afterEvaluate {
+        /*
+         * Wire the direct BOM into `assemble` so `./gradlew build` produces a
+         * fresh `build/reports/cyclonedx-direct/bom.json` for every module.
+         * The maven publications below attach that file as a classified
+         * artifact (classifier=cyclonedx, extension=json), so publish tasks
+         * also trigger it transitively via `builtBy`.
+         */
+        tasks.named("assemble") {
+            dependsOn(tasks.named("cyclonedxDirectBom"))
+        }
+
         configure<TestingExtension> {
             suites {
                 configureEach {
@@ -217,6 +257,11 @@ publishing {
     publications {
         create<MavenPublication>("maven") {
             from(components["java"])
+            artifact(layout.buildDirectory.file("reports/cyclonedx-direct/bom.json")) {
+                classifier = "cyclonedx"
+                extension = "json"
+                builtBy(tasks.named("cyclonedxDirectBom"))
+            }
             pom {
                 name.set(project.name)
                 inceptionYear.set("2025")
