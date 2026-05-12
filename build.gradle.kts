@@ -7,7 +7,6 @@ import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 import org.jreleaser.gradle.plugin.JReleaserExtension
 import org.jreleaser.model.Active
-import org.jreleaser.sdk.tool.Cyclonedx
 import java.util.Calendar
 
 buildscript {
