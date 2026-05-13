@@ -48,11 +48,11 @@ jobs:
           git config --global user.name "${{ github.triggering_actor }}"
           git config --global user.email 'actions.ci@engine.com'
 
-      - name: Setup JDK
-        uses: actions/setup-java@v4
+      - name: Setup GraalVM
+        uses: graalvm/setup-graalvm@f744c72a42b1995d7b0cbc314bde4bace7ac1fe1
         with:
           java-version: '21'
-          distribution: 'corretto'
+          distribution: 'graalvm-community'
 
       - name: Setup gradle
         uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # https://github.com/gradle/actions/releases/tag/v6.1.0
