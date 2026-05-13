@@ -86,8 +86,12 @@ jobs:
             # so the post step can find it and emit the build report.
             # (Last-wins: appending overrides the original C: path the
             # action baked into the properties file at pre-step time.)
+            # The leading \n guards against the original file lacking a
+            # trailing newline (otherwise the new entry would concatenate
+            # onto the previous line and native-image would treat the
+            # whole mess as one bogus path).
             escaped_temp="${RUNNER_TEMP//\\/\\\\}"
-            printf '%s\n' "-H:BuildOutputJSONFile=${escaped_temp}\\\\native-image-build-output.json" \
+            printf '\n%s\n' "-H:BuildOutputJSONFile=${escaped_temp}\\\\native-image-build-output.json" \
               >> "$cfg_dir_unix/native-image-options.properties"
           fi
 
