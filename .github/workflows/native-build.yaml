@@ -73,12 +73,11 @@ jobs:
             mv "$NATIVE_IMAGE_CONFIG_FILE" "$cfg_dir_unix/native-image-options.properties"
             echo "NATIVE_IMAGE_CONFIG_FILE=$cfg_win" >> "$GITHUB_ENV"
           fi
-
-          # RUNNER_TEMP is D:\a\_temp on Windows hosted runners; pin TEMP/TMP
-          # there so native-image's intermediate files stay on D:.
-          tmp_win="${RUNNER_TEMP//\//\\}"
-          echo "TEMP=$tmp_win" >> "$GITHUB_ENV"
-          echo "TMP=$tmp_win" >> "$GITHUB_ENV"
+          # NOTE: don't redirect TEMP/TMP. setup-graalvm's post step resolves
+          # BUILD_OUTPUT_JSON_PATH via os.tmpdir() at process load time, so
+          # overriding TEMP between pre and post causes it to look for the
+          # native-image report under a different drive than where it was
+          # actually written and emits "Unable to find build output data".
 
       - name: Setup gradle
         uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # https://github.com/gradle/actions/releases/tag/v6.1.0
