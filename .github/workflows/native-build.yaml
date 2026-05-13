@@ -44,6 +44,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p /d/hostedtoolcache/windows
+          echo "RUNNER_TOOL_CACHE=D:\\hostedtoolcache\\windows" >> "$GITHUB_ENV"
           echo "AGENT_TOOLSDIRECTORY=D:\\hostedtoolcache\\windows" >> "$GITHUB_ENV"
 
       - name: Setup GraalVM
