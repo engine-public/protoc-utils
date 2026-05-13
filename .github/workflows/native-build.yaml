@@ -46,22 +46,39 @@ jobs:
           distribution: 'graalvm-community'
           native-image-job-reports: 'true'
 
-      # native-image's Gradle plugin calls Path.relativize between the
-      # workspace (D:\a\...) and JAVA_HOME, which fails with "'other' has
-      # different root" when GraalVM is installed on C:. setup-graalvm
-      # ignores RUNNER_TOOL_CACHE, so move the JDK to D: after install.
+      # native-image's Gradle plugin calls Path.relativize between paths
+      # that must share a Windows drive root; otherwise it fails with
+      # "'other' has different root". setup-graalvm installs the JDK to C:
+      # and drops its options file under %TEMP% (also C:), but the workspace
+      # is on D:. Move the JDK, the options file, and TEMP/TMP to D: so
+      # everything shares a root.
       - name: "Relocate GraalVM to D: drive (Windows)"
         if: runner.os == 'Windows'
         shell: bash
         run: |
           set -euo pipefail
-          dst_win='D:\graalvm'
-          dst_unix='/d/graalvm'
-          [ -d "$dst_unix" ] && rm -rf "$dst_unix"
-          mv "$JAVA_HOME" "$dst_unix"
-          echo "JAVA_HOME=$dst_win" >> "$GITHUB_ENV"
-          echo "GRAALVM_HOME=$dst_win" >> "$GITHUB_ENV"
-          echo "${dst_win}\\bin" >> "$GITHUB_PATH"
+
+          jdk_win='D:\graalvm'
+          jdk_unix='/d/graalvm'
+          [ -d "$jdk_unix" ] && rm -rf "$jdk_unix"
+          mv "$JAVA_HOME" "$jdk_unix"
+          echo "JAVA_HOME=$jdk_win" >> "$GITHUB_ENV"
+          echo "GRAALVM_HOME=$jdk_win" >> "$GITHUB_ENV"
+          echo "${jdk_win}\\bin" >> "$GITHUB_PATH"
+
+          if [ -n "${NATIVE_IMAGE_CONFIG_FILE:-}" ] && [ -f "$NATIVE_IMAGE_CONFIG_FILE" ]; then
+            cfg_dir_unix='/d/graalvm-config'
+            cfg_win='D:\graalvm-config\native-image-options.properties'
+            mkdir -p "$cfg_dir_unix"
+            mv "$NATIVE_IMAGE_CONFIG_FILE" "$cfg_dir_unix/native-image-options.properties"
+            echo "NATIVE_IMAGE_CONFIG_FILE=$cfg_win" >> "$GITHUB_ENV"
+          fi
+
+          # RUNNER_TEMP is D:\a\_temp on Windows hosted runners; pin TEMP/TMP
+          # there so native-image's intermediate files stay on D:.
+          tmp_win="${RUNNER_TEMP//\//\\}"
+          echo "TEMP=$tmp_win" >> "$GITHUB_ENV"
+          echo "TMP=$tmp_win" >> "$GITHUB_ENV"
 
       - name: Setup gradle
         uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # https://github.com/gradle/actions/releases/tag/v6.1.0
