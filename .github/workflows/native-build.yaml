@@ -66,18 +66,30 @@ jobs:
           echo "GRAALVM_HOME=$jdk_win" >> "$GITHUB_ENV"
           echo "${jdk_win}\\bin" >> "$GITHUB_PATH"
 
+          # Pin TEMP/TMP to D: so native-image's intermediate paths stay on
+          # the same drive as the workspace (required by the buildtools
+          # plugin's Path.relativize calls).
+          tmp_win="${RUNNER_TEMP//\//\\}"
+          echo "TEMP=$tmp_win" >> "$GITHUB_ENV"
+          echo "TMP=$tmp_win" >> "$GITHUB_ENV"
+
           if [ -n "${NATIVE_IMAGE_CONFIG_FILE:-}" ] && [ -f "$NATIVE_IMAGE_CONFIG_FILE" ]; then
             cfg_dir_unix='/d/graalvm-config'
             cfg_win='D:\graalvm-config\native-image-options.properties'
             mkdir -p "$cfg_dir_unix"
             mv "$NATIVE_IMAGE_CONFIG_FILE" "$cfg_dir_unix/native-image-options.properties"
             echo "NATIVE_IMAGE_CONFIG_FILE=$cfg_win" >> "$GITHUB_ENV"
+
+            # setup-graalvm's post step looks for the build-output JSON at
+            # os.tmpdir()/native-image-build-output.json. Since we pinned
+            # TEMP to RUNNER_TEMP above, redirect the JSON output there too
+            # so the post step can find it and emit the build report.
+            # (Last-wins: appending overrides the original C: path the
+            # action baked into the properties file at pre-step time.)
+            escaped_temp="${RUNNER_TEMP//\\/\\\\}"
+            printf '%s\n' "-H:BuildOutputJSONFile=${escaped_temp}\\\\native-image-build-output.json" \
+              >> "$cfg_dir_unix/native-image-options.properties"
           fi
-          # NOTE: don't redirect TEMP/TMP. setup-graalvm's post step resolves
-          # BUILD_OUTPUT_JSON_PATH via os.tmpdir() at process load time, so
-          # overriding TEMP between pre and post causes it to look for the
-          # native-image report under a different drive than where it was
-          # actually written and emits "Unable to find build output data".
 
       - name: Setup gradle
         uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # https://github.com/gradle/actions/releases/tag/v6.1.0
