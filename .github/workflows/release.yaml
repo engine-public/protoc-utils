@@ -109,4 +109,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ inputs.build_version }}" --generate-notes --prerelease=${{ inputs.pre_release }} --verify-tag
-          gh release upload "${{ inputs.build_version }}" build/dist/jvm/* build/dist/native/*
+          gh release upload "${{ inputs.build_version }}" build/dist/jvm/*-cyclonedx.json build/dist/native/*
