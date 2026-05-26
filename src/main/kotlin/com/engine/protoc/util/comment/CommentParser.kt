@@ -65,6 +65,10 @@ public abstract class CommentParser<S : Style> {
             private val commentContentCharsPattern = Regex("""[a-zA-Z0-9]""")
             private val rightFrameEdgePattern = Regex(""".*?([^a-zA-Z0-9]+)$""")
             private val leftRawEdgePattern = Regex("""^([^a-zA-Z0-9]+).*$""")
+
+            // A single content line can't reveal a non-whitespace frame edge — frames need multiple lines
+            // to corroborate. Trailing punctuation like "]." or "." on one line is content, not a frame.
+            private val rightSingleLineEdgePattern = Regex(""".*?(\s+)$""")
             public fun of(rawComment: String): ParseContext = ParseContext(rawComment)
         }
 
@@ -133,7 +137,13 @@ public abstract class CommentParser<S : Style> {
                 1 -> {
                     val l = leftRawEdgePattern.matchEntire(rawContentLines[0])
                         ?.let { it.groupValues[1] } ?: ""
-                    val r = rightFrameEdgePattern.matchEntire(rawContentLines[0])
+                    // If there's frame chrome around this single content line (top/bottom borders or
+                    // padding), use the aggressive pattern to capture the frame's right edge. Otherwise
+                    // this is an isolated content line — fall back to whitespace-only so we don't
+                    // misread trailing content punctuation (e.g. "[MissingAnchor].") as a frame edge.
+                    val hasFrameChrome = rawCommentLines.count { it.isNotBlank() } > 1
+                    val rightPattern = if (hasFrameChrome) rightFrameEdgePattern else rightSingleLineEdgePattern
+                    val r = rightPattern.matchEntire(rawContentLines[0])
                         ?.let { it.groupValues[1] } ?: ""
                     l to r
                 }

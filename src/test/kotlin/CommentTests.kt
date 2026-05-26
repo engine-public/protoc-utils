@@ -269,6 +269,18 @@ class CommentTests :
                 """.trimMargin(),
                 expectedCleanedResult = "Framed Single Line",
             ),
+            TestCase(
+                description = "Reference link at end of line with period",
+                source = """
+                |// The greeting will be randomly selected [MissingAnchor].
+                |
+                """.trimMargin(),
+                protoc = """
+                | The greeting will be randomly selected [MissingAnchor].
+                |
+                """.trimMargin(),
+                expectedCleanedResult = "The greeting will be randomly selected [MissingAnchor].",
+            ),
         )
 
         context("Comment parsing tests") {
