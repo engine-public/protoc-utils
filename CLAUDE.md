@@ -61,4 +61,4 @@ Required secrets (already provisioned at repo/org level): `JRELEASER_GPG_PASSPHR
 
 ## Dependency versions
 
-All plugin and library versions live in `gradle/libs.versions.toml`. The notable pinned majors are Kotlin 2.3.x, protobuf-java 4.x, Kotest 6.x, GraalVM Native plugin 0.11.x. `ch.qos.logback:logback-*` is force-resolved to `[1.5.25,)` via a `configurations.named("ktlint")` rule to address a known dependabot CVE.
+`ch.qos.logback:logback-*` is force-resolved to `[1.5.25,)` via a `configurations.named("ktlint")` rule to address a known dependabot CVE. All other versions live in `gradle/libs.versions.toml`.

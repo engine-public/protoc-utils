@@ -31,21 +31,22 @@ buildscript {
             /*
              * https://github.com/hotelengine/protoc-utils/security/dependabot/9
              *  … through https://github.com/hotelengine/protoc-utils/security/dependabot/15
-             * Seven jackson-databind advisories — PolymorphicTypeValidator bypasses
+             *  and https://github.com/hotelengine/protoc-utils/security/dependabot/18
+             * Eight jackson-databind advisories — PolymorphicTypeValidator bypasses
              * (CVE-2026-54513, CVE-2026-54512), @JsonView / @JsonIgnore /
              * @JsonIgnoreProperties bypasses (CVE-2026-54517, CVE-2026-54516,
-             * CVE-2026-54515, CVE-2026-54518), and InetSocketAddress eager-DNS SSRF
-             * (CVE-2026-54514). Transitive of the CycloneDX and JReleaser plugins.
-             * 2.22.0 is the first published release exceeding every vulnerable range —
-             * the named 2.21.5 fix (CVE-2026-54515) was never released to Maven Central.
+             * CVE-2026-54515, CVE-2026-54518), InetSocketAddress eager-DNS SSRF
+             * (CVE-2026-54514), and a further @JsonView bypass for @JsonUnwrapped
+             * container properties (GHSA-5gvw-p9qm-jgwh, first patched in 2.22.1).
+             * Transitive of the CycloneDX and JReleaser plugins.
              * jackson-core is bumped in lock-step to avoid databind/core skew;
              * jackson-annotations tracks its own 2.22 line via the BOM.
              */
             if (requested.group == "com.fasterxml.jackson.core" &&
                 (requested.name == "jackson-databind" || requested.name == "jackson-core")
             ) {
-                useVersion("2.22.0")
-                because("Dependabot alerts #9-#15: jackson-databind PTV/@JsonView/@JsonIgnore bypasses and SSRF (CVE-2026-54512…54518)")
+                useVersion("2.22.1")
+                because("Dependabot alerts #9-#15,#18: jackson-databind PTV/@JsonView/@JsonIgnore/@JsonUnwrapped bypasses and SSRF (CVE-2026-54512…54518, GHSA-5gvw-p9qm-jgwh)")
             }
         }
     }
