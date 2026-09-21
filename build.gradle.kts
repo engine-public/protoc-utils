@@ -48,6 +48,14 @@ buildscript {
                 useVersion("2.22.1")
                 because("Dependabot alerts #9-#15,#18: jackson-databind PTV/@JsonView/@JsonIgnore/@JsonUnwrapped bypasses and SSRF (CVE-2026-54512…54518, GHSA-5gvw-p9qm-jgwh)")
             }
+            /*
+             * GHSA-9pwp-9qqc-pr26 / CVE-2026-8763 — bcprov-jdk18on. Transitive of
+             * JReleaser (via bcpg/bcpkix signing stack).
+             */
+            if (requested.group == "org.bouncycastle") {
+                useVersion("1.85")
+                because("bcprov-jdk18on GHSA-9pwp-9qqc-pr26 / CVE-2026-8763")
+            }
         }
     }
 }
