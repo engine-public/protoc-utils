@@ -10,15 +10,29 @@ buildscript {
     configurations.classpath {
         resolutionStrategy.eachDependency {
             /*
-             * https://github.com/hotelengine/protoc-utils/security/dependabot/9
-             *  … through https://github.com/hotelengine/protoc-utils/security/dependabot/15
-             *  and https://github.com/hotelengine/protoc-utils/security/dependabot/18
+             * https://github.com/engine-public/protoc-utils/security/dependabot/9
+             *  … through https://github.com/engine-public/protoc-utils/security/dependabot/15
+             *  and https://github.com/engine-public/protoc-utils/security/dependabot/18
              * Eight jackson-databind advisories — PolymorphicTypeValidator bypasses
              * (CVE-2026-54513, CVE-2026-54512), @JsonView / @JsonIgnore /
              * @JsonIgnoreProperties bypasses (CVE-2026-54517, CVE-2026-54516,
              * CVE-2026-54515, CVE-2026-54518), InetSocketAddress eager-DNS SSRF
              * (CVE-2026-54514), and a further @JsonView bypass for @JsonUnwrapped
              * container properties (GHSA-5gvw-p9qm-jgwh, first patched in 2.22.1).
+             *
+             * https://github.com/engine-public/protoc-utils/security/dependabot/22
+             *  … through https://github.com/engine-public/protoc-utils/security/dependabot/29
+             * Eight further jackson-databind/-core advisories, all first patched by
+             * 2.22.3 — incomplete InetAddress eager-DNS SSRF fix (GHSA-vvgp-rfg2-7rr6),
+             * Path deserialization FileSystemProvider scheme allowlist
+             * (GHSA-wjgm-6hv5-3cvf), Duration/XMLGregorianCalendar number-parse DoS
+             * (GHSA-q4xh-88c3-wmh7), Comparable missing from the PTV unsafe base types
+             * (GHSA-gx83-3vf8-gh7j), unbounded retention of unknown type IDs
+             * (GHSA-wv8q-qhhj-9h54), quadratic forward-reference completion
+             * (GHSA-cxp5-3px4-pw24), NumberInput.PATTERN_FLOAT ReDoS
+             * (GHSA-p6pp-m3f8-5c89), and unbounded _reportInvalidToken growth
+             * (GHSA-7hhh-6rmp-j9qf).
+             *
              * Transitive of the CycloneDX plugin.
              * jackson-core is bumped in lock-step to avoid databind/core skew;
              * jackson-annotations tracks its own 2.22 line via the BOM.
@@ -26,8 +40,8 @@ buildscript {
             if (requested.group == "com.fasterxml.jackson.core" &&
                 (requested.name == "jackson-databind" || requested.name == "jackson-core")
             ) {
-                useVersion("2.22.1")
-                because("Dependabot alerts #9-#15,#18: jackson-databind PTV/@JsonView/@JsonIgnore/@JsonUnwrapped bypasses and SSRF (CVE-2026-54512…54518, GHSA-5gvw-p9qm-jgwh)")
+                useVersion("2.22.3")
+                because("Dependabot alerts #9-#15,#18,#22-#29: jackson-databind/-core PTV/@JsonView/@JsonIgnore/@JsonUnwrapped bypasses, SSRF, and DoS (CVE-2026-54512…54518, GHSA-5gvw-p9qm-jgwh, GHSA-vvgp-rfg2-7rr6 et al.)")
             }
         }
     }
