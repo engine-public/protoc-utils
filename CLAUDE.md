@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `./gradlew test --tests "ServiceAndMethodWrapperTests"` — single test class. (`-i` for info logging.)
 - `./gradlew ktlintCheck` / `./gradlew ktlintFormat` — lint / autoformat. ktlint excludes everything under `build/` (workaround for the plugin not honoring generated-source exclusions). **Always run `ktlintFormat` after editing Kotlin source** so the next CI run isn't blocked on a trivial formatting failure.
 - `./gradlew :protoc-utils-recorder:nativeCompile` — build the host's native binary directly (output: `recorder/build/native/nativeCompile/protoc-utils-recorder-<os>-<arch>.exe`). Requires GraalVM 21.
-- `./gradlew stageMavenCentral` — assembles the JVM jars + recorder binary into `build/staging/maven-central/` in the same on-disk layout Maven Central expects. The publication for the recorder picks up native binaries from `ENGINE_NATIVE_BIN_DIR` if set, else the local `nativeCompile` output (local-classifier only).
+- `./gradlew publishAllPublicationsToGitHubPackagesRepository` — publishes both `:protoc-utils` and `:protoc-utils-recorder` to GitHub Packages. Requires `GITHUB_ACTOR` / `GITHUB_TOKEN` env vars (the CI release job sets these). The recorder publication picks up native binaries from `ENGINE_NATIVE_BIN_DIR` if set, else the local `nativeCompile` output (local-classifier only).
 - `ENGINE_BUILD_VERSION=<semver> ./gradlew …` — sets `project.version` for the build. Falls back to `0.0.0-pre.0` if unset; CI release sets it from workflow_dispatch input.
 - `./gradlew … -Pcodeql` — disables all `nativeCompile*` tasks (used by the CodeQL workflow which can't run native-image).
 
@@ -50,14 +50,14 @@ If you change anything about the recorder publication, the build script's `repos
 
 ## Publishing model
 
-Releases publish to Maven Central via JReleaser, configured in the root `build.gradle.kts`:
+Releases publish to [GitHub Packages](https://github.com/engine-public/protoc-utils/packages) via the standard `maven-publish` plugin, configured in the root `build.gradle.kts`:
 
 - **`com.engine:protoc-utils`** ships as a normal JVM library (jar + sources + javadoc + `.module`). `withJavadocJar()` / `withSourcesJar()` are applied **only** to the root project — not in `allprojects` — so the recorder doesn't waste cycles building javadoc/sources jars it would never publish.
 - **`com.engine:protoc-utils-recorder`** is `<packaging>pom</packaging>` with four classifier attachments (`linux-x86_64`, `linux-aarch_64`, `osx-aarch_64`, `windows-x86_64`), all with `.exe` extension regardless of host OS. This matches the `io.grpc:protoc-gen-grpc-java` convention so the protobuf Gradle plugin's `:${osdetector.classifier}@exe` resolution works out-of-the-box. The recorder's `imageName` conditionally appends `.exe` only on non-Windows hosts (GraalVM auto-appends on Windows).
 
-The CI release flow is `release.yaml` → fan out to `build.yaml` (JVM jars) and `native-build.yaml` (4-platform matrix producing `dist-native-<classifier>` artifacts named `protoc-utils-recorder-<version>-<classifier>.exe`) → release job downloads everything flat, runs `./gradlew stageMavenCentral` (with `ENGINE_NATIVE_BIN_DIR=build/dist/native`), then `./gradlew -xstageMavenCentral jreleaserDeploy` which GPG-signs and uploads to Sonatype Central in `upload` (manual-promote) staging mode. The same binaries are also attached to a GitHub Release via `gh release upload`.
+The CI release flow is `release.yaml` → fan out to `build.yaml` (JVM jars) and `native-build.yaml` (4-platform matrix producing `dist-native-<classifier>` artifacts named `protoc-utils-recorder-<version>-<classifier>.exe`) → release job downloads everything flat, then runs `./gradlew publishAllPublicationsToGitHubPackagesRepository` (with `ENGINE_NATIVE_BIN_DIR=build/dist/native`). The same binaries are also attached to a GitHub Release via `gh release upload`.
 
-Required secrets (already provisioned at repo/org level): `JRELEASER_GPG_PASSPHRASE`, `JRELEASER_GPG_SECRET_KEY`, `JRELEASER_MAVENCENTRAL_TOKEN`. Required vars (probably inherited from org): `JRELEASER_GPG_PUBLIC_KEY`, `JRELEASER_MAVENCENTRAL_USERNAME`.
+The release job needs `packages: write` permission; the workflow's default `GITHUB_TOKEN` handles authentication — no separate secrets required. Consumers of GitHub Packages Maven repos need a personal access token with `read:packages` scope, even though the repository is public (this is a known GitHub limitation).
 
 ## Dependency versions
 

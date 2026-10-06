@@ -6,17 +6,28 @@ A Kotlin library for building `protoc` compiler plugins. It wraps the raw `Descr
 
 ## Installation
 
-Released artifacts are published to Maven Central.
+Released artifacts are published to [GitHub Packages](https://github.com/engine-public/protoc-utils/packages). GitHub Packages requires authentication to download from a Maven repository — even for public repositories — so consumers need a [GitHub personal access token](https://github.com/settings/tokens) with the `read:packages` scope.
 
 **Gradle (Kotlin DSL):**
 
 ```kotlin
+repositories {
+    mavenCentral()
+    maven {
+        url = uri("https://maven.pkg.github.com/engine-public/protoc-utils")
+        credentials {
+            username = providers.gradleProperty("gpr.user").orElse(providers.environmentVariable("GITHUB_ACTOR")).get()
+            password = providers.gradleProperty("gpr.key").orElse(providers.environmentVariable("GITHUB_TOKEN")).get()
+        }
+    }
+}
+
 dependencies {
     implementation("com.engine:protoc-utils:<version>")
 }
 ```
 
-**Maven:**
+**Maven** — add the repository to `~/.m2/settings.xml` with your token, then:
 
 ```xml
 <dependency>
