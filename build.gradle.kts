@@ -5,29 +5,10 @@ import org.gradle.kotlin.dsl.configure
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
-import org.jreleaser.gradle.plugin.JReleaserExtension
-import org.jreleaser.model.Active
-import java.util.Calendar
 
 buildscript {
     configurations.classpath {
         resolutionStrategy.eachDependency {
-            /*
-             * https://github.com/hotelengine/protoc-utils/security/dependabot/2
-             * GHSA-f58c-gq56-vjjf — Apache Tika XXE. Transitive of JReleaser.
-             */
-            if (requested.group == "org.apache.tika" && requested.name == "tika-core") {
-                useVersion("3.2.2")
-                because("Dependabot alert #2: Apache Tika XXE (GHSA-f58c-gq56-vjjf)")
-            }
-            /*
-             * https://github.com/hotelengine/protoc-utils/security/dependabot/4
-             * GHSA-6fmv-xxpf-w3cw — plexus-utils path traversal. Transitive of JReleaser.
-             */
-            if (requested.group == "org.codehaus.plexus" && requested.name == "plexus-utils") {
-                useVersion("3.6.1")
-                because("Dependabot alert #4: plexus-utils directory traversal (GHSA-6fmv-xxpf-w3cw)")
-            }
             /*
              * https://github.com/hotelengine/protoc-utils/security/dependabot/9
              *  … through https://github.com/hotelengine/protoc-utils/security/dependabot/15
@@ -38,7 +19,7 @@ buildscript {
              * CVE-2026-54515, CVE-2026-54518), InetSocketAddress eager-DNS SSRF
              * (CVE-2026-54514), and a further @JsonView bypass for @JsonUnwrapped
              * container properties (GHSA-5gvw-p9qm-jgwh, first patched in 2.22.1).
-             * Transitive of the CycloneDX and JReleaser plugins.
+             * Transitive of the CycloneDX plugin.
              * jackson-core is bumped in lock-step to avoid databind/core skew;
              * jackson-annotations tracks its own 2.22 line via the BOM.
              */
@@ -55,7 +36,6 @@ buildscript {
 plugins {
     alias(libs.plugins.cyclonedx)
     alias(libs.plugins.graalvm.native).apply(false)
-    alias(libs.plugins.jreleaser)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.license.report).apply(false)
@@ -73,43 +53,6 @@ fun calculateVersion(): String {
             }
         }
         ?: "0.0.0-pre.0" // temporary fallback version
-}
-
-val mavenStagingDir = layout.buildDirectory.dir("staging/maven-central")
-
-configure<JReleaserExtension> {
-    project {
-        description = "Utilities to assist in the building of a protoc plugin."
-        copyright = "Copyright ${Calendar.getInstance().get(Calendar.YEAR)} HotelEngine, Inc., d/b/a Engine"
-        license = "Apache-2.0"
-    }
-    signing {
-        active.set(Active.ALWAYS)
-        armored.set(true)
-    }
-    deploy {
-        maven {
-            mavenCentral {
-                create("sonatype") {
-                    active.set(Active.ALWAYS)
-                    url.set("https://central.sonatype.com/api/v1/publisher")
-                    stagingRepository(mavenStagingDir.get().asFile.relativeTo(rootDir).path)
-                }
-            }
-        }
-    }
-}
-
-val jreleaserCreateBuildDir = tasks.register("jreleaserCreateBuildDir") {
-    group = "publishing"
-    doFirst { project.layout.buildDirectory.dir("jreleaser").get().asFile.mkdirs() }
-}
-tasks.named("jreleaserDeploy") {
-    dependsOn(jreleaserCreateBuildDir)
-}
-
-val stageMavenCentral = tasks.register("stageMavenCentral") {
-    group = "publishing"
 }
 
 val licenseAllowlistFile = rootProject.file("gradle/license/allowed-licenses.json")
@@ -237,32 +180,23 @@ allprojects {
 
         configure<PublishingExtension> {
             repositories {
-                val mavenUser = System.getenv("MAVEN_USERNAME")
-                val mavenPassword = System.getenv("MAVEN_PASSWORD")
-                val mavenUrl = System.getenv("MAVEN_DEPLOY_URL")
                 maven {
-                    name = "stagingMaven"
-                    url = mavenUrl?.let { uri(it) } ?: mavenStagingDir.get().asFile.toURI()
-                    if (mavenUser != null) {
-                        credentials {
-                            username = mavenUser
-                            password = mavenPassword
-                        }
+                    name = "GitHubPackages"
+                    url = uri("https://maven.pkg.github.com/engine-public/protoc-utils")
+                    credentials {
+                        username = System.getenv("GITHUB_ACTOR")
+                        password = System.getenv("GITHUB_TOKEN")
                     }
                 }
             }
-        }
-
-        tasks.findByName("publish")?.also { publishTask ->
-            stageMavenCentral.configure { dependsOn(publishTask) }
         }
     }
 }
 
 description = "Utilities to assist in the building of a protoc plugin."
 
-// Only the library jar (this root project) ships sources + javadoc on Maven
-// Central; the recorder is a POM-only native-binary distribution.
+// Only the library jar (this root project) ships sources + javadoc; the
+// recorder is a POM-only native-binary distribution.
 java {
     withJavadocJar()
     withSourcesJar()
@@ -288,18 +222,18 @@ publishing {
                 licenses {
                     license {
                         name.set("Apache-2.0")
-                        url.set("https://github.com/hotelengine/protoc-gen-openapi/blob/${version}/LICENSE")
+                        url.set("https://github.com/engine-public/protoc-utils/blob/${version}/LICENSE")
                     }
                 }
                 developers {
                     developer {
-                        organizationUrl.set("https://github.com/hotelengine")
+                        organizationUrl.set("https://github.com/engine-public")
                     }
                 }
                 scm {
-                    connection.set("scm:git:https://github.com/hotelengine/protoc-gen-openapi.git")
-                    developerConnection.set("scm:git:https://github.com/hotelengine/protoc-gen-openapi.git")
-                    url.set("https://github.com/hotelengine/protoc-gen-openapi")
+                    connection.set("scm:git:https://github.com/engine-public/protoc-utils.git")
+                    developerConnection.set("scm:git:https://github.com/engine-public/protoc-utils.git")
+                    url.set("https://github.com/engine-public/protoc-utils")
                 }
             }
         }
@@ -314,7 +248,7 @@ afterEvaluate {
     publishing.publications.named<MavenPublication>("maven") {
         pom {
             description.set(project.description)
-            url.set("https://github.com/hotelengine/protoc-gen-openapi/blob/${version}/README.md")
+            url.set("https://github.com/engine-public/protoc-utils/blob/${version}/README.md")
         }
     }
 }

@@ -6,9 +6,11 @@ The primary use case is generating a stable binary fixture for unit-testing a pr
 
 ---
 
-## Maven Central
+## Distribution
 
-The recorder is published to Maven Central as a POM-only artifact with a per-platform native binary attached as a classified file. Coordinates:
+The recorder is published to [GitHub Packages](https://github.com/engine-public/protoc-utils/packages) as a POM-only artifact with a per-platform native binary attached as a classified file. Consuming from GitHub Packages requires a [GitHub personal access token](https://github.com/settings/tokens) with the `read:packages` scope; see the [root README](../README.md#installation) for the repository configuration snippet.
+
+Coordinates:
 
 | Group | Artifact | Classifier | Extension |
 |---|---|---|---|
@@ -41,7 +43,7 @@ The protobuf-gradle-plugin appends `:${osdetector.classifier}@exe` to the coordi
 
 ### Command line
 
-Either download the binary for your platform from Maven Central (see classifiers above) or build it locally with GraalVM 21:
+Either download the binary for your platform from the GitHub Release for the version you want (attached to every release at `https://github.com/engine-public/protoc-utils/releases`) or build it locally with GraalVM 21:
 
 ```bash
 ./gradlew :protoc-utils-recorder:nativeCompile
@@ -64,7 +66,7 @@ protoc \
 
 ### Gradle protobuf plugin
 
-Reference the recorder as an `artifact` and the protobuf Gradle plugin will pull the right per-platform binary from Maven Central and copy it into the test resources:
+Reference the recorder as an `artifact` and the protobuf Gradle plugin will pull the right per-platform binary from GitHub Packages and copy it into the test resources:
 
 ```kotlin
 // build.gradle.kts

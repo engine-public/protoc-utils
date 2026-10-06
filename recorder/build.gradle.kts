@@ -42,8 +42,8 @@ graalvmNative {
 description = "A protoc plugin that records the CodeGeneratorRequest sent by protoc as a binary fixture."
 
 /*
- * Per-platform native binaries are published to Maven Central as classified
- * artifacts on a POM-only artifact (no main jar, mirroring io.grpc:protoc-gen-grpc-java).
+ * Per-platform native binaries are published as classified artifacts on a
+ * POM-only artifact (no main jar, mirroring io.grpc:protoc-gen-grpc-java).
  * Every binary uses the .exe extension regardless of host OS, so the artifact
  * coordinates can be resolved with `:<classifier>@exe` on every platform.
  */
@@ -77,18 +77,18 @@ publishing {
                 licenses {
                     license {
                         name.set("Apache-2.0")
-                        url.set("https://github.com/hotelengine/protoc-gen-openapi/blob/${version}/LICENSE")
+                        url.set("https://github.com/engine-public/protoc-utils/blob/${version}/LICENSE")
                     }
                 }
                 developers {
                     developer {
-                        organizationUrl.set("https://github.com/hotelengine")
+                        organizationUrl.set("https://github.com/engine-public")
                     }
                 }
                 scm {
-                    connection.set("scm:git:https://github.com/hotelengine/protoc-gen-openapi.git")
-                    developerConnection.set("scm:git:https://github.com/hotelengine/protoc-gen-openapi.git")
-                    url.set("https://github.com/hotelengine/protoc-gen-openapi")
+                    connection.set("scm:git:https://github.com/engine-public/protoc-utils.git")
+                    developerConnection.set("scm:git:https://github.com/engine-public/protoc-utils.git")
+                    url.set("https://github.com/engine-public/protoc-utils")
                 }
             }
         }
@@ -99,7 +99,7 @@ afterEvaluate {
     val pub = publishing.publications.getByName<MavenPublication>("maven")
     pub.pom {
         description.set(project.description)
-        url.set("https://github.com/hotelengine/protoc-gen-openapi/blob/${version}/recorder/README.md")
+        url.set("https://github.com/engine-public/protoc-utils/blob/${version}/recorder/README.md")
     }
 
     val binDir = nativeBinariesDir.get()
