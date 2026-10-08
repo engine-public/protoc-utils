@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build / test commands
 
-- `./gradlew build` — compiles, runs ktlint, and runs the test suite for both modules.
+- `./gradlew build` — compiles, runs ktlint, and runs the test suite for every module.
 - `./gradlew test` — runs tests only. The root `:test` task transitively triggers the recorder's GraalVM `nativeCompile` and a `publishToMavenLocal` (see *Test fixture wiring*), so a clean checkout's first run takes several minutes for the native image build.
 - `./gradlew test --tests "ServiceAndMethodWrapperTests"` — single test class. (`-i` for info logging.)
 - `./gradlew ktlintCheck` / `./gradlew ktlintFormat` — lint / autoformat. ktlint excludes everything under `build/` (workaround for the plugin not honoring generated-source exclusions). **Always run `ktlintFormat` after editing Kotlin source** so the next CI run isn't blocked on a trivial formatting failure.
@@ -17,10 +17,11 @@ The `pr.yaml` workflow just calls `build.yaml` (which runs `./gradlew build` aft
 
 ## Module layout
 
-The repo is a multi-project Gradle build with two modules:
+The repo is a multi-project Gradle build with three modules:
 
 - **Root project `:protoc-utils`** (`src/main/kotlin/com/engine/protoc/util/…`) — the published Kotlin library. Pure JVM, no native code.
 - **Subproject `:protoc-utils-recorder`** (`recorder/`) — a tiny GraalVM-native protoc plugin (single `Main.kt`) that copies stdin to a file named `code-generator-request.binpb`. It is shipped as multi-platform native binaries to Maven Central, **not** as a JVM jar.
+- **Subproject `:protoc-utils-markdown`** (`markdown/`) — a JVM library, depending on the root library and commonmark-java, that resolves proto reference links in doc comments and converts comment Markdown to plain text. Kept separate so the core library stays free of the commonmark dependency.
 
 `settings.gradle.kts` walks the tree and includes every directory containing a `build.gradle.kts` (skipping `build`, `buildSrc`, `tmp`, `scratch`, dotfile dirs, and dirs containing `.gradle_ignore`). Subproject names are derived as `:<root-name>-<relative-path>`, so the directory `recorder/` becomes `:protoc-utils-recorder`. To add a subproject, just create a directory with a `build.gradle.kts` — no manual `include(…)` needed.
 

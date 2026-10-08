@@ -69,6 +69,10 @@ public abstract class CommentParser<S : Style> {
             // A single content line can't reveal a non-whitespace frame edge — frames need multiple lines
             // to corroborate. Trailing punctuation like "]." or "." on one line is content, not a frame.
             private val rightSingleLineEdgePattern = Regex(""".*?(\s+)$""")
+
+            // A top or bottom border line of a framed comment, e.g. "*****", "====\", or "//////".
+            // Backticks and tildes are deliberately excluded so a closing Markdown code fence is content.
+            private val frameBorderPattern = Regex("""[*=/\\|#+_-]+""")
             public fun of(rawComment: String): ParseContext = ParseContext(rawComment)
         }
 
@@ -95,6 +99,35 @@ public abstract class CommentParser<S : Style> {
          * This may be an empty range if no content exists for the content.
          */
         public val contentLineIndices: IntRange by lazy {
+            if (isPlain) {
+                val first = rawCommentLines.indexOfFirst { it.isNotBlank() }
+                if (first < 0) IntRange.EMPTY else first..rawCommentLines.indexOfLast { it.isNotBlank() }
+            } else {
+                framedContentLineIndices
+            }
+        }
+
+        /**
+         * True when the comment has a top or bottom border line made only of frame characters, as in a
+         * block comment frame or a JavaDoc opening `*`.
+         */
+        public val hasFrameChrome: Boolean by lazy {
+            val nonBlank = rawCommentLines.filter { it.isNotBlank() }
+            nonBlank.size > 1 && (frameBorderPattern.matches(nonBlank.first().trim()) || frameBorderPattern.matches(nonBlank.last().trim()))
+        }
+
+        /**
+         * True when the comment has no frame chrome and no column-zero fence (such as the Holub `*` edge),
+         * which is the case for ordinary `//` comments. Only common leading whitespace is removed from a
+         * plain comment, and lines without alphanumeric characters (code fences, table rules, list
+         * markers) are kept as content, so Markdown in the comment survives cleaning.
+         */
+        private val isPlain: Boolean by lazy {
+            !hasFrameChrome &&
+                (framedContentLines.size < 2 || framedCommonEdges.first.firstOrNull()?.isWhitespace() != false)
+        }
+
+        private val framedContentLineIndices: IntRange by lazy {
             var firstContentLineIndex: Int? = null
             var lastContentLineIndex: Int? = null
             rawCommentLines.indices.forEach { i ->
@@ -116,6 +149,10 @@ public abstract class CommentParser<S : Style> {
             rawCommentLines.slice(contentLineIndices)
         }
 
+        private val framedContentLines: List<String> by lazy {
+            rawCommentLines.slice(framedContentLineIndices)
+        }
+
         /**
          * The sanitized region of lines that include comment content.
          * May include internal blank lines.
@@ -129,6 +166,20 @@ public abstract class CommentParser<S : Style> {
          * This is useful for identification of fences, padding, and other comment chrome.
          */
         public val rawCommonEdges: Pair<String, String> by lazy {
+            if (isPlain) {
+                val leftEdge = rawContentLines
+                    .filter { it.isNotBlank() }
+                    .map { line -> line.takeWhile { it.isWhitespace() } }
+                    .reduceOrNull { acc, it -> acc.commonPrefixWith(it) }
+                    ?: ""
+                leftEdge to ""
+            } else {
+                framedCommonEdges
+            }
+        }
+
+        private val framedCommonEdges: Pair<String, String> by lazy {
+            val rawContentLines = framedContentLines
             when (rawContentLines.size) {
                 // it's empty
                 0 -> "" to ""
@@ -236,6 +287,10 @@ public abstract class CommentParser<S : Style> {
          */
         public fun cleanedLine(index: Int): String {
             return cleanedLineCache.computeIfAbsent(index) { i ->
+                if (isPlain) {
+                    return@computeIfAbsent rawCommentLines[i].removePrefix(rawCommonEdges.first).trimEnd()
+                }
+
                 /*
                  * special casing for first line and fencing messing up left edge detection
                  */
