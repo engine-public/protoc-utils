@@ -281,6 +281,136 @@ class CommentTests :
                 """.trimMargin(),
                 expectedCleanedResult = "The greeting will be randomly selected [MissingAnchor].",
             ),
+            TestCase(
+                description = "single-line comment starting with a code span",
+                source = """
+                |// `entity_type` was unspecified.
+                |
+                """.trimMargin(),
+                protoc = """
+                | `entity_type` was unspecified.
+                |
+                """.trimMargin(),
+                expectedCleanedResult = "`entity_type` was unspecified.",
+            ),
+            TestCase(
+                description = "single-line comment starting with a reference link",
+                source = """
+                |// [Widget] is returned on success.
+                |
+                """.trimMargin(),
+                protoc = """
+                | [Widget] is returned on success.
+                |
+                """.trimMargin(),
+                expectedCleanedResult = "[Widget] is returned on success.",
+            ),
+            TestCase(
+                description = "multiple single-line comments that all start with a reference link",
+                source = """
+                |// [Widget] for widgets.
+                |// [Gadget] for gadgets.
+                |
+                """.trimMargin(),
+                protoc = """
+                | [Widget] for widgets.
+                | [Gadget] for gadgets.
+                |
+                """.trimMargin(),
+                expectedCleanedResult = """
+                |[Widget] for widgets.
+                |[Gadget] for gadgets.
+                """.trimMargin(),
+            ),
+            TestCase(
+                description = "multiple single-line comments forming a bulleted list",
+                source = """
+                |// - first
+                |// - second
+                |// - third
+                |
+                """.trimMargin(),
+                protoc = """
+                | - first
+                | - second
+                | - third
+                |
+                """.trimMargin(),
+                expectedCleanedResult = """
+                |- first
+                |- second
+                |- third
+                """.trimMargin(),
+            ),
+            TestCase(
+                description = "single-line comments with a paragraph break and indented list",
+                source = """
+                |// Returns one of:
+                |//
+                |// * `A` when
+                |//   continued
+                |// * `B`
+                |
+                """.trimMargin(),
+                protoc = """
+                | Returns one of:
+                |
+                | * `A` when
+                |   continued
+                | * `B`
+                |
+                """.trimMargin(),
+                expectedCleanedResult = """
+                |Returns one of:
+                |
+                |* `A` when
+                |  continued
+                |* `B`
+                """.trimMargin(),
+            ),
+            TestCase(
+                description = "single-line comments containing a fenced code block",
+                source = """
+                |// Example:
+                |// ```json
+                |// {"a": 1}
+                |// ```
+                |
+                """.trimMargin(),
+                protoc = """
+                | Example:
+                | ```json
+                | {"a": 1}
+                | ```
+                |
+                """.trimMargin(),
+                expectedCleanedResult = """
+                |Example:
+                |```json
+                |{"a": 1}
+                |```
+                """.trimMargin(),
+            ),
+            TestCase(
+                description = "single-line comments containing a table",
+                source = """
+                |// | Code | Meaning |
+                |// |------|---------|
+                |// | 1    | One     |
+                |
+                """.trimMargin(),
+                protoc = """
+                | | Code | Meaning |
+                | |------|---------|
+                | | 1    | One     |
+                |
+                """.trimMargin(),
+                expectedCleanedResult = """
+                || Code | Meaning |
+                ||------|---------|
+                || 1    | One     |
+                """.trimMargin(),
+            ),
         )
 
         context("Comment parsing tests") {
