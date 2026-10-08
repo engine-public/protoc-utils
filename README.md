@@ -39,6 +39,8 @@ dependencies {
 
 The companion `protoc-utils-recorder` plugin is published as multi-platform native binaries under the same group; see [`recorder/README.md`](recorder/README.md) for how to consume those.
 
+The companion `protoc-utils-markdown` library resolves proto reference links (`[Widget]`, `[Service.Rpc]`) in doc comments and converts comment Markdown to plain text; see [`markdown/README.md`](markdown/README.md).
+
 ---
 
 ## Why this exists
@@ -79,6 +81,7 @@ val comment: String? = nameElement?.location?.leadingComments?.cleaned
 | `cleaned` | The comment text with fencing characters (`//`, `/*`, `*`, etc.) stripped |
 
 The `cleaned` form is what you almost always want when generating documentation or OpenAPI descriptions.
+For ordinary `//` comments only the common leading whitespace is removed, so Markdown in the comment (a leading code span or reference link, list markers, code fences, tables) is preserved.
 
 ### Extension options
 

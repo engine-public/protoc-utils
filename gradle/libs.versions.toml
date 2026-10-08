@@ -2,6 +2,8 @@
 kotest = "6.1.4"
 kotlin = "2.4.20"
 protobuf = "4.34.1"
+commonmark = "0.28.0"
+slf4j = "2.0.17"
 
 # plugin versions
 google-osdetector-plugin = "1.7.3"
@@ -21,6 +23,8 @@ cyclonedx = { id = "org.cyclonedx.bom", version.ref = "cyclonedx" }
 license-report = { id = "com.github.jk1.dependency-license-report", version.ref = "jk1-dependency-license-report" }
 
 [libraries]
+commonmark = { group = "org.commonmark", name = "commonmark", version.ref = "commonmark" }
+slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf" }
 
 # test dependencies
