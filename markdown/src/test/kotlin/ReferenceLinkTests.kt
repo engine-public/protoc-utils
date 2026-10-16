@@ -257,6 +257,13 @@ class MarkdownTextTests :
             MarkdownText.firstSentence(parser.parse("")) shouldBe ""
         }
 
+        test("render leaves bare URLs unescaped but still escapes other text") {
+            val url = "https://en.wikipedia.org/wiki/ISO_8601#Combined_date_and_time_representations"
+            MarkdownText.render(parser.parse("See $url")) shouldBe "See $url"
+            MarkdownText.render(parser.parse("See $url.")) shouldBe "See $url."
+            MarkdownText.render(parser.parse("a \\_b\\_ and $url (c)")) shouldBe "a \\_b\\_ and $url (c)"
+        }
+
         test("render trims trailing whitespace") {
             MarkdownText.render(parser.parse("*line one*   \n\n\n")) shouldBe "*line one*"
         }
