@@ -7,6 +7,10 @@ import org.commonmark.node.Link
 import org.commonmark.node.Node
 import org.commonmark.node.Paragraph
 import org.commonmark.node.Text
+import org.commonmark.renderer.NodeRenderer
+import org.commonmark.renderer.markdown.CoreMarkdownNodeRenderer
+import org.commonmark.renderer.markdown.MarkdownNodeRendererContext
+import org.commonmark.renderer.markdown.MarkdownNodeRendererFactory
 import org.commonmark.renderer.markdown.MarkdownRenderer
 import org.commonmark.renderer.text.TextContentRenderer
 import java.text.BreakIterator
@@ -16,7 +20,11 @@ import java.util.Locale
  * Conversions of parsed doc-comment Markdown into the strings a plugin emits.
  */
 public object MarkdownText {
-    private val defaultMarkdownRenderer: MarkdownRenderer = MarkdownRenderer.builder().build()
+    private val bareUrl = Regex("""https?://[^\s<>\[\]]+""")
+    private val trailingPunctuation = charArrayOf('.', ',', ';', ':', '!', '?', ')', '\'', '"')
+
+    private val defaultMarkdownRenderer: MarkdownRenderer =
+        MarkdownRenderer.builder().nodeRendererFactory(BareUrlRendererFactory).build()
     private val textRenderer: TextContentRenderer = TextContentRenderer.builder().stripNewlines(true).build()
 
     /**
@@ -88,5 +96,40 @@ public object MarkdownText {
         iterator.setText(plain)
         val end = iterator.next()
         return if (end == BreakIterator.DONE) plain else plain.substring(0, end).trim()
+    }
+
+    /**
+     * Writes bare `http(s)://` URLs inside [Text] nodes verbatim.  The core renderer backslash-escapes
+     * `_` and `*` in text, which would turn `ISO_8601` in a bare URL into `ISO\_8601`; the parser
+     * does not autolink bare URLs, so the escaped form is never read back and leaks into the output.
+     * All other text still goes through the core renderer's escaping.
+     */
+    private object BareUrlRendererFactory : MarkdownNodeRendererFactory {
+        override fun create(context: MarkdownNodeRendererContext): NodeRenderer = BareUrlRenderer(context)
+
+        override fun getSpecialCharacters(): Set<Char> = emptySet()
+    }
+
+    private class BareUrlRenderer(private val context: MarkdownNodeRendererContext) : NodeRenderer {
+        private val core = CoreMarkdownNodeRenderer(context)
+
+        override fun getNodeTypes(): Set<Class<out Node>> = setOf(Text::class.java)
+
+        override fun render(node: Node) {
+            val literal = (node as Text).literal
+            var last = 0
+            for (match in bareUrl.findAll(literal)) {
+                val url = match.value.trimEnd(*trailingPunctuation)
+                if (url.length <= "https://".length) continue
+                core.writeText(literal.substring(last, match.range.first))
+                context.writer.raw(url)
+                last = match.range.first + url.length
+            }
+            core.writeText(literal.substring(last))
+        }
+
+        private fun CoreMarkdownNodeRenderer.writeText(text: String) {
+            if (text.isNotEmpty()) visit(Text(text))
+        }
     }
 }
